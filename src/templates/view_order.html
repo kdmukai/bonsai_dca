@@ -1,0 +1,14 @@
+<div>
+    <a href="{{ url_for('home') }}">home</a> &gt;
+    <a href="{{ url_for('view_credential', credential_id=credential.id) }}">{{ credential.exchange }} (-{{ credential.client_key_last_six }})</a> &gt;
+    View Order
+</div>
+
+<h1>View Order</h1>
+
+{{ order.created }}: {{ order.market_name }} - {{ order.order_side }} {{ order.amount }} {{ order.amount_currency }}</br>
+<br/>
+Raw data:<br/>
+{% for key in order.raw_data.keys() %}
+    {{ key }}: {{ order.raw_data[key] }}<br/>
+{% endfor %}
