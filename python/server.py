@@ -1,8 +1,10 @@
 import datetime
 import logging
+import sys
 import threading
 import time
 
+from decimal import Decimal
 from flask import (
     Flask,
     Blueprint,
@@ -13,13 +15,19 @@ from flask import (
     jsonify,
 )
 
-from decimal import Decimal
-
 from models import APICredential, DCASchedule, Order
-from exchanges.gemini import GeminiExchange
+from exchanges.gemini import GeminiExchange, GeminiRequestException
 
 
-app = Flask(__name__)
+
+template_folder = "templates"
+if getattr(sys, 'frozen', False):
+    # We're running from PyInstaller's internal temp dir and have to point folder refs
+    #   accordingly.
+    template_folder = os.path.join(sys._MEIPASS, template_folder)
+
+app = Flask(__name__, template_folder=template_folder)
+
 
 
 @app.route("/")
@@ -57,7 +65,7 @@ def view_credential(credential_id):
             credential.delete_instance()
             return redirect(url_for('home'))
 
-    recent_orders = Order.select().where(Order.credential == credential).order_by(Order.created.desc())
+    recent_orders = Order.select().where(Order.credential == credential).order_by(Order.created.desc()).limit(10)
 
     return render_template(
         'view_credential.html',
@@ -106,18 +114,6 @@ def create_schedule(credential_id):
 
 
 
-@app.route("/schedule/delete/<schedule_id>", methods=('POST',))
-def delete_schedule(schedule_id):
-    schedule = DCASchedule.get(id=schedule_id)
-
-    if request.method == 'POST':
-        credential_id = schedule.credential.id
-        schedule.delete_instance()
-
-        return redirect(url_for('view_credential', credential_id=credential_id))
-
-
-
 @app.route("/schedule/update/<schedule_id>", methods=('GET', 'POST'))
 def update_schedule(credential_id):
     schedule = DCASchedule.get(id=schedule_id)
@@ -133,6 +129,39 @@ def update_schedule(credential_id):
         HOURS=DCASchedule.HOURS,
         MINUTES=DCASchedule.MINUTES,
     )
+
+
+
+@app.route("/schedule/pause/<schedule_id>", methods=['POST'])
+def pause_schedule(schedule_id):
+    schedule = DCASchedule.get(id=schedule_id)
+    schedule.is_active = True;
+    schedule.is_paused = True;
+    schedule.save()
+
+    return redirect(url_for('view_credential', credential_id=schedule.credential.id))
+
+
+
+@app.route("/schedule/unpause/<schedule_id>", methods=['POST'])
+def unpause_schedule(schedule_id):
+    schedule = DCASchedule.get(id=schedule_id)
+    schedule.is_paused = False;
+    schedule.save()
+
+    return redirect(url_for('view_credential', credential_id=schedule.credential.id))
+
+
+
+@app.route("/schedule/delete/<schedule_id>", methods=('POST',))
+def delete_schedule(schedule_id):
+    schedule = DCASchedule.get(id=schedule_id)
+
+    if request.method == 'POST':
+        credential_id = schedule.credential.id
+        schedule.delete_instance()
+
+        return redirect(url_for('view_credential', credential_id=credential_id))
 
 
 
@@ -162,35 +191,6 @@ def view_order(order_id):
 
 
 
-def timer_thread():
-    while True:
-        print("Checking DCASchedules")
-        for schedule in DCASchedule.select().where(DCASchedule.is_active == True):
-            if schedule.is_time_to_run:
-                print(f"Running Schedule {schedule.id} {schedule.market_name}")
-                schedule.last_run = datetime.datetime.now()
-                schedule.save()
-
-                if schedule.credential.exchange == APICredential.EXCHANGE__GEMINI:
-                    exchange = GeminiExchange(schedule.credential)                    
-                else:
-                    raise Exception(f"Exchange {schedule.exchange} not implemented yet!")
-                order = exchange.place_scheduled_order(schedule)
-
-        # Update live orders
-        for order in Order.select().where(Order.is_live):
-            if order.credential.exchange == APICredential.EXCHANGE__GEMINI:
-                exchange = GeminiExchange(order.credential)                
-            else:
-                raise Exception(f"Exchange {schedule.exchange} not implemented yet!")
-
-            print(f"Updating Order {order.id}")
-            exchange.update_order(order)
-
-        time.sleep(10)
-
-
-
 if __name__ == "__main__":
     import werkzeug
     from models import create_tables
@@ -199,10 +199,10 @@ if __name__ == "__main__":
     create_tables()
 
     # Start the schedule runner thread
-    if not werkzeug.serving.is_running_from_reloader():
-        # Prevent duplicates from being created by hot reloads
-        print("starting thread")
-        x = threading.Thread(target=timer_thread, daemon=True)
-        x.start()
+    # Prevent duplicates from being created by hot reloads
+    # if not werkzeug.serving.is_running_from_reloader():
+    #     from daemon import timer_thread
+    #     x = threading.Thread(target=timer_thread, daemon=True)
+    #     x.start()
 
     app.run(port=61712)

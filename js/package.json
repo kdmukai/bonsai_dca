@@ -1,0 +1,26 @@
+{
+  "name": "bonsai-electron",
+  "version": "0.0.1",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kdmukai/bonsai_dca.git"
+  },
+  "author": "Keith Mukai",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kdmukai/bonsai_dca/issues"
+  },
+  "homepage": "https://github.com/kdmukai/bonsai_dca#readme",
+  "devDependencies": {
+    "electron": "^13.0.1"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+}

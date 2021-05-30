@@ -60,12 +60,20 @@ class APICredential(BaseModel):
 
 
 class DCASchedule(BaseModel):
+    """
+        A schedule whose `is_active == True` will appear in the UI but the `is_paused`
+        toggle decides whether or not to keep running it.
+
+        But when `is_active` == False, the schedule is essentially hidden from the UI
+        and only retained for historial purposes.
+    """
     DAYS = "day(s)"
     HOURS = "hour(s)"
     MINUTES = "minute(s)"
 
     credential = ForeignKeyField(APICredential, backref='schedules')
     is_active = BooleanField(default=True)
+    is_paused = BooleanField(default=False)
     market_name = CharField()
     order_side = CharField()
     amount = DecimalField()
@@ -114,13 +122,14 @@ class DCASchedule(BaseModel):
 class Order(BaseModel):
     STATUS__OPEN = 'open'
     STATUS__INSUFFICIENT_FUNDS = 'insufficient funds'
+    STATUS__MIN_ORDER_SIZE = 'min order size not met'
     STATUS__CANCELLED = 'cancelled'
     STATUS__REJECTED = 'rejected'
     STATUS__COMPLETE = 'complete'
 
     schedule = ForeignKeyField(DCASchedule, backref='orders', null=True)
     credential = ForeignKeyField(APICredential, backref='orders')
-    order_id = CharField()
+    order_id = CharField(null=True)     # Null if order attempt fails
     status = CharField(default=STATUS__OPEN)
     market_name = CharField()
     order_side = CharField()

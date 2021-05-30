@@ -129,3 +129,6 @@ dmypy.json
 .pyre/
 src/data.db
 data.db
+
+
+node_modules

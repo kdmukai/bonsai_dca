@@ -187,37 +187,35 @@ class GeminiExchange(object):
 
 
     def place_limit_order(self, amount, price):
-        try:
-            if self.amount_currency_is_quote_currency:
-                result = self.api_conn.new_order(
-                    market=self.market_name,
-                    side=self.order_side,
-                    amount=float((amount / price).quantize(self.base_increment)),
-                    price=price
-                )
-            else:
-                result = self.api_conn.new_order(
-                    market=self.market_name,
-                    side=self.order_side,
-                    amount=float(amount.quantize(self.base_increment)),
-                    price=price
-                )
-        except GeminiRequestException as e:
-            # sns.publish(
-            #     TopicArn=sns_topic,
-            #     Subject=f"ERROR placing {self.base_currency} {order_side} order: {e.response_json.get('reason')}",
-            #     Message=json.dumps(e.response_json, indent=4)
-            # )
-            print(json.dumps(e.response_json, indent=4))
-            exit()
+        if self.amount_currency_is_quote_currency:
+            result = self.api_conn.new_order(
+                market=self.market_name,
+                side=self.order_side,
+                amount=float((amount / price).quantize(self.base_increment)),
+                price=price
+            )
+        else:
+            result = self.api_conn.new_order(
+                market=self.market_name,
+                side=self.order_side,
+                amount=float(amount.quantize(self.base_increment)),
+                price=price
+            )
         return result
 
 
     def place_order(self, market_name, order_side, amount, amount_currency, schedule=None):
         self.initialize_market(market_name, amount_currency, order_side)
         price = self.calculate_order_price()
-        result = self.place_limit_order(amount, price)
-        print(json.dumps(result, indent=4))
+
+        try:
+            result = self.place_limit_order(amount, price)
+            print(json.dumps(result, indent=4))
+        except GeminiRequestException as e:
+            print(f"Order returned error: {e.status_code}")
+            print(json.dumps(e.response_json, indent=2))
+            result = e.response_json
+
 
         order = Order.create(
             schedule=schedule,
@@ -232,7 +230,7 @@ class GeminiExchange(object):
         )
 
         # Sometimes orders are rejected because the order book moved
-        if result.get("is_cancelled") and "reason" in result and result.get("reason") == "MakerOrCancelWouldTake":
+        if result.get("is_cancelled") and result.get("reason") == "MakerOrCancelWouldTake":
             order.status = Order.STATUS__REJECTED
             order.is_live = False
             order.save()
@@ -240,6 +238,32 @@ class GeminiExchange(object):
             # Reset the schedule so it runs again
             if schedule:
                 schedule.undo_last_run()
+
+        # Order rejected due to insufficient funds
+        """
+            {
+                "result": "error",
+                "reason": "InsufficientFunds",
+                "message": "Failed to place buy order on symbol 'BTCUSD' for price $33,771.86 and quantity 0.00001481 BTC due to insufficient funds"
+            }
+        """
+        if result.get("result") == "error" and result.get("reason") == "InsufficientFunds":
+            order.status = Order.STATUS__INSUFFICIENT_FUNDS
+            order.is_live = False
+            order.save()
+
+        # Order rejected due to min order size
+        """
+            {
+                "result": "error",
+                "reason": "InvalidQuantity",
+                "message": "Invalid quantity for symbol BTCUSD: 0.00000291"
+            }
+        """
+        if result.get("result") == "error" and result.get("reason") == "InvalidQuantity":
+            order.status = Order.STATUS__MIN_ORDER_SIZE
+            order.is_live = False
+            order.save()
 
         return order
 
