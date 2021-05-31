@@ -1,0 +1,65 @@
+<!doctype html>
+<html class="no-js" lang="">
+
+<head>
+  <meta charset="utf-8">
+  <title>{% block head_title %}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}{% endblock %}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta property="og:title" content="">
+  <meta property="og:type" content="">
+  <meta property="og:url" content="">
+  <meta property="og:image" content="">
+
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
+  <!-- Place favicon.ico in the root directory -->
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/normalize.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+  <meta name="theme-color" content="#fafafa">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    .header {
+      padding: 1em;
+      background-color: #363d49;
+      margin-bottom:  1em;
+    }
+    .bonsai_logo {
+      height: 65px;
+    }
+    .bonsai_logo_text {
+      margin-left:  0.25em;
+      font-size: 1.5em;
+      color: #d8d8d8;
+    }
+    .body_content {
+      padding-left: 1em;
+      padding-right: 1em;
+    }
+  </style>
+  {% block page_styles %}{% endblock %}
+</head>
+
+<body>
+  <div class="header">
+    <a href="{{ url_for('home') }}"><img class="bonsai_logo" src="{{ url_for('static', filename='img/bonsai.png') }}"></a><span class="bonsai_logo_text">Bonsai DCA</span>
+  </div>
+
+  <!-- Add your site or application content here -->
+  <div class="body_content">
+    {% block body_content %}{% endblock %}
+  </div>
+
+  <script src="{{ url_for('static', filename='js/vendor/modernizr-3.11.2.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+
+{% block page_scripts %}{% endblock %}
+
+</html>

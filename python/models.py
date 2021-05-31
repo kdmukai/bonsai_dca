@@ -5,7 +5,9 @@ import os
 from decimal import Decimal
 from pathlib import Path
 from peewee import *
+from playhouse.shortcuts import model_to_dict
 from playhouse.sqlite_ext import JSONField
+
 
 
 data_dir = os.path.join(Path.home(), ".bonsai_dca")
@@ -15,6 +17,7 @@ DATABASE = os.path.join(data_dir, "data.db")
 # Create a database instance that will manage the connection and
 # execute queries
 db = SqliteDatabase(DATABASE)
+
 
 
 def create_tables():
@@ -33,6 +36,7 @@ def create_tables():
             db.create_tables([DCASchedule])
         if not table_exists('order'):
             db.create_tables([Order])
+
 
 
 # Create a base class all our models will inherit, which defines
@@ -119,6 +123,7 @@ class DCASchedule(BaseModel):
         self.save()
 
 
+
 class Order(BaseModel):
     STATUS__OPEN = 'open'
     STATUS__INSUFFICIENT_FUNDS = 'insufficient funds'
@@ -140,5 +145,10 @@ class Order(BaseModel):
     created = DateTimeField(default=datetime.datetime.now)
     updated = DateTimeField(null=True)
 
+
+    def to_json(self):
+        data = model_to_dict(self, recurse=False)
+        data["amount"] = float(self.amount)  # Must convert Decimal fields
+        return data
 
 

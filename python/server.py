@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os
 import sys
 import threading
 import time
@@ -15,18 +16,30 @@ from flask import (
     jsonify,
 )
 
+from blueprints.credentials import credentials_routes
+from blueprints.orders import orders_routes
 from models import APICredential, DCASchedule, Order
 from exchanges.gemini import GeminiExchange, GeminiRequestException
 
 
 
-template_folder = "templates"
+template_folder = "_templates"
+static_folder = "_static"
 if getattr(sys, 'frozen', False):
     # We're running from PyInstaller's internal temp dir and have to point folder refs
     #   accordingly.
     template_folder = os.path.join(sys._MEIPASS, template_folder)
+    static_folder = os.path.join(sys._MEIPASS, static_folder)
 
-app = Flask(__name__, template_folder=template_folder)
+app = Flask(__name__,
+            static_url_path='',
+            static_folder=static_folder,
+            template_folder=template_folder)
+
+# app.config["EXPLAIN_TEMPLATE_LOADING"] = True
+
+app.register_blueprint(credentials_routes, url_prefix="/credentials")
+app.register_blueprint(orders_routes, url_prefix="/orders")
 
 
 
@@ -34,49 +47,6 @@ app = Flask(__name__, template_folder=template_folder)
 def home():
     credentials = APICredential.select().order_by(APICredential.exchange)
     return render_template('index.html', credentials=credentials)
-
-
-
-@app.route("/credential/create", methods=('GET', 'POST'))
-def create_credential():
-    if request.method == 'POST':
-        exchange = request.form['exchange']
-        client_key = request.form['client_key']
-        client_secret = request.form['client_secret']
-
-        credential = APICredential.create(
-            exchange=exchange,
-            client_key=client_key,
-            client_secret=client_secret
-        )
-        return redirect(url_for('home'))
-
-    return render_template('create_credential.html')
-
-
-
-@app.route("/credential/<credential_id>", methods=('GET', 'POST'))
-def view_credential(credential_id):
-    credential = APICredential.get(id=credential_id)
-
-    if request.method == 'POST':
-        command = request.form['command']
-        if command == 'DELETE':
-            credential.delete_instance()
-            return redirect(url_for('home'))
-
-    recent_orders = Order.select().where(Order.credential == credential).order_by(Order.created.desc()).limit(10)
-
-    return render_template(
-        'view_credential.html',
-        credential=credential,
-        recent_orders=recent_orders,
-        STATUS__OPEN=Order.STATUS__OPEN,
-        STATUS__INSUFFICIENT_FUNDS=Order.STATUS__INSUFFICIENT_FUNDS,
-        STATUS__CANCELLED=Order.STATUS__CANCELLED,
-        STATUS__REJECTED=Order.STATUS__REJECTED,
-        STATUS__COMPLETE=Order.STATUS__COMPLETE
-    )
 
 
 
@@ -102,7 +72,7 @@ def create_schedule(credential_id):
             repeat_timescale=repeat_timescale
         )
 
-        return redirect(url_for('view_credential', credential_id=credential.id))
+        return redirect(url_for('credentials.view_credential', credential_id=credential.id))
 
     return render_template(
         'create_schedule.html',
@@ -139,7 +109,7 @@ def pause_schedule(schedule_id):
     schedule.is_paused = True;
     schedule.save()
 
-    return redirect(url_for('view_credential', credential_id=schedule.credential.id))
+    return redirect(url_for('credentials.view_credential', credential_id=schedule.credential.id))
 
 
 
@@ -149,7 +119,7 @@ def unpause_schedule(schedule_id):
     schedule.is_paused = False;
     schedule.save()
 
-    return redirect(url_for('view_credential', credential_id=schedule.credential.id))
+    return redirect(url_for('credentials.view_credential', credential_id=schedule.credential.id))
 
 
 
@@ -161,48 +131,41 @@ def delete_schedule(schedule_id):
         credential_id = schedule.credential.id
         schedule.delete_instance()
 
-        return redirect(url_for('view_credential', credential_id=credential_id))
-
-
-
-@app.route("/order/manual/<credential_id>", methods=('GET', 'POST'))
-def manual_order(credential_id):
-    credential = APICredential.get(id=credential_id)
-
-    if request.method == 'POST':
-        market_name = request.form['market_name']
-        order_side = request.form['order_side'].lower()
-        amount = Decimal(request.form['amount'])
-        amount_currency = request.form['amount_currency']
-
-        exchange = GeminiExchange(credential)
-        order = exchange.place_order(market_name, order_side, amount, amount_currency)
-        return redirect(url_for('view_order', credential_id=credential.id, order_id=order.id))
-
-    return render_template('manual_order.html', credential=credential)
-
-
-
-@app.route("/order/<order_id>", methods=('GET',))
-def view_order(order_id):
-    order = Order.get(id=order_id)
-
-    return render_template('view_order.html', credential=order.credential, order=order)
+        return redirect(url_for('credentials.view_credential', credential_id=credential_id))
 
 
 
 if __name__ == "__main__":
+    import argparse
     import werkzeug
     from models import create_tables
+
+    parser = argparse.ArgumentParser(
+        description="""
+            Bonsai DCA - local dev server
+        """,
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+
+    # options
+    parser.add_argument('-d', '--daemon',
+                        action="store_true",
+                        default=False,
+                        dest="start_daemon",
+                        help="Start the background daemon")
+
+    args = parser.parse_args()
+    start_daemon = args.start_daemon
 
     # Creates sqlite DB tables if necessary
     create_tables()
 
-    # Start the schedule runner thread
-    # Prevent duplicates from being created by hot reloads
-    # if not werkzeug.serving.is_running_from_reloader():
-    #     from daemon import timer_thread
-    #     x = threading.Thread(target=timer_thread, daemon=True)
-    #     x.start()
+    if start_daemon:
+        # Start the schedule runner thread
+        # Prevent duplicates from being created by hot reloads
+        if not werkzeug.serving.is_running_from_reloader():
+            from daemon import timer_thread
+            x = threading.Thread(target=timer_thread, daemon=True)
+            x.start()
 
     app.run(port=61712)

@@ -1,0 +1,20 @@
+{% extends "_base_template.html" %}
+
+
+{% block body_content %}
+    Hello, world!
+
+    {% if credentials %}
+        {% for credential in credentials %}
+            <div><a href="{{ url_for('credentials.view_credential', credential_id=credential.id) }}">{{ credential.exchange }} (-{{ credential.client_key_last_six }})</a></div>
+        {% endfor %}
+    {% endif %}
+
+    <hr>
+    <p>
+        <a href="{{ url_for('credentials.create_credential') }}">Add Exchange API Credentials</a>
+    </p>
+    <hr>
+
+    {% include 'orders/widget_recent_orders.html' %}
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "_base_template.html" %}
+
+
+{% block body_content %}
+    <h2>Manual Order for {{ credential.exchange }} (-{{ credential.client_key_last_six }})</h2>
+
+
+    <form method="post">
+        Market:
+        <select name="market_name">
+            <option value="BTCUSD">BTCUSD</option>
+            <option value="ETHUSD">ETHUSD</option>
+        </select><br/>
+        <br/>
+
+        Order side:
+        <select name="order_side">
+            <option value="BUY">buy</option>
+            <option value="SELL">sell</option>
+        </select><br/>
+        <br/>
+
+        Amount:
+        <input type="text" name="amount"> <select name="amount_currency">
+            <option value="USD">USD</option>
+        </select><br/>
+        <br/>
+        <br/>
+        <br/>
+        <input type="submit" value="Submit Order">
+    </form>
+{% endblock %}

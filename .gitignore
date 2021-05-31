@@ -132,3 +132,5 @@ data.db
 
 
 node_modules
+js/bonsai_dca_server
+js/bonsai_dca_daemon

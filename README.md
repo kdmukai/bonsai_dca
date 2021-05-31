@@ -1,29 +1,30 @@
 # bonsai_dca
 
+_Serenity through tiny stacks_
 
 
 ## Local development
-Run as a standard Flask server with:
+Run as a local dev server and start the background daemon:
 ```
-python src/main.py
+cd python
+export FLASK_ENV=development && python server.py --daemon
 ```
 
-Run as a windowed GUI with:
+
+Run as a windowed GUI with (daemon is automatically started by JS script):
 ```
-python src/gui.py
+cd js
+npm start
 ```
+_note: you have to build the app locally first (see below) for this `npm` call to work._
 
 
 ## Building the app
 
 ### Mac build
 ```
-brew install qt5
-brew link qt5
-```
+cd python
+pyinstaller bonsai_dca_server.spec
 
-```
-cd src
-pyinstaller --onefile --add-data 'templates:templates' --name bonsai_dca_server server.py
-pyinstaller --onefile --name bonsai_dca_daemon daemon.py
+pyinstaller bonsai_dca_daemon.spec
 ```

@@ -1,13 +1,17 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const { spawn, exec } = require('child_process');
+const path = require('path')
 const fetch = require("node-fetch");
 
 const serverURL = "http://127.0.0.1:61712";
-const bonsaiServerPath = "./../python/dist/bonsai_dca_server"
-const bonsaiDaemonPath = "./../python/dist/bonsai_dca_daemon"
+const bonsaiServerPath = path.join(__dirname, "bonsai_dca_server")
+const bonsaiDaemonPath = path.join(__dirname, "bonsai_dca_daemon")
 let bonsaiServerProcess
 let bonsaiDaemonProcess
 let mainWindow
+
+// Flag the app was quitted
+let quitted = false
 
 let webPreferences = {
   worldSafeExecuteJavaScript: true,
@@ -33,6 +37,23 @@ function createWindow () {
 }
 
 
+app.commandLine.appendSwitch('ignore-certificate-errors');
+
+
+let platformName = ''
+switch (process.platform) {
+  case 'darwin':
+    platformName = 'osx'
+    break
+  case 'win32':
+    platformName = 'win64'
+    break
+  case 'linux':
+    platformName = 'x86_64-linux-gnu'
+    break
+}
+
+
 app.whenReady().then(() => {
 
   console.log("Creating the window")
@@ -46,6 +67,9 @@ app.whenReady().then(() => {
   console.log("Starting the server")
   bonsaiServerProcess = spawn(bonsaiServerPath, [], { stdio: ['pipe', process.stdout, process.stderr] });
 
+  // LAME KLUDGE: Can't get the commented out section below to detect when Flask is ready
+  //  to serve so instead we just wait 8 seconds. In order to try the stdout detection
+  //  method again, must edit `spawn` call above to swap `process.stdout` with `'pipe'`.
   setTimeout(() => {
     console.log("Loading url");
     mainWindow.loadURL(serverURL);
@@ -71,7 +95,55 @@ app.whenReady().then(() => {
   bonsaiDaemonProcess = spawn(bonsaiDaemonPath, [], { stdio: ['pipe', process.stdout, process.stderr] });
 })
 
+
 app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit()
+  if (process.platform !== 'darwin') {
+    quitBonsai()
+    app.quit()
+  }
 })
 
+
+app.on('before-quit', () => {
+  if (!quitted) {
+    quitted = true
+    quitBonsai()
+  
+    if (mainWindow && !mainWindow.isDestroyed()) {
+       mainWindow.destroy()
+       mainWindow = null
+    }
+  }
+})
+
+
+ipcMain.on('request-mainprocess-action', (event, arg) => {
+  switch (arg.message) {
+    case 'quit-app':
+      quitBonsai()
+      app.quit()
+      break
+  }
+});
+
+
+function quitBonsai() {
+  quitProcess(bonsaiDaemonProcess, "bonsai_dca_daemon")
+  quitProcess(bonsaiServerProcess, "bonsai_dca_server")
+}
+
+
+function quitProcess(proc, exe_name) {
+  if (proc) {
+    try {
+      if (platformName == 'win64') {
+        exec('taskkill /F /T /PID ' + proc.pid);
+        exec('taskkill /IM ' + exe_name + '.exe ');
+        process.kill(-proc.pid)
+      }
+      proc.kill('SIGINT')
+    } catch (e) {
+      console.log('Process quit warning: ' + e)
+    }
+  }
+}

@@ -1,0 +1,67 @@
+<style>
+    #recent_order_entry {
+        display: none;
+    }
+    .order_exchange_logo {
+        height: 16px;
+        width: 16px;
+    }
+</style>
+
+
+<h2>Recent Orders</h2>
+<div id="recent_orders_list">
+</div>
+
+
+<div id="recent_order_entry">
+    <img class="order_exchange_logo"/>
+    <a class="order_view_url" href=""><span class="order_created"></span></a>: <span class="order_market_name"></span> - <span class="order_order_side"></span> <span class="order_amount"></span> <span class="order_amount_currency"></span> <span class="order_status"></span>
+</div>
+
+
+<script>
+    function getRecentOrders() {
+        fetch("{{ url_for('orders.recent_orders') }}")
+          .then(
+            function(response) {
+              if (response.status !== 200) {
+                console.log('Looks like there was a problem. Status Code: ' +
+                  response.status);
+                return;
+              }
+
+              var orders_list = document.getElementById("recent_orders_list");
+              var entry_template = document.getElementById("recent_order_entry");
+              response.json().then(function(data) {
+                console.log(data);
+
+                data.forEach(function(order) {
+                    var new_entry = entry_template.cloneNode(true);
+                    var new_entry_id = "recent_orders_order_" + order.id;
+                    new_entry.id = new_entry_id;
+                    new_entry.style.display = "block";
+                    new_entry.querySelector(".order_exchange_logo").setAttribute("src", "/img/exchanges/logo_" + order.exchange + ".png");
+                    new_entry.querySelector(".order_view_url").setAttribute("href", "{{ url_for('orders.view_order') }}" + order.id);
+                    new_entry.querySelector(".order_created").textContent = order.created;
+                    new_entry.querySelector(".order_market_name").textContent = order.market_name;
+                    new_entry.querySelector(".order_order_side").textContent = order.order_side;
+                    new_entry.querySelector(".order_amount").textContent = order.amount;
+                    new_entry.querySelector(".order_amount_currency").textContent = order.amount_currency;
+                    new_entry.querySelector(".order_status").textContent = order.status;
+                    orders_list.appendChild(new_entry);
+                    console.log(new_entry);
+                })
+              });
+            }
+          )
+          .catch(function(err) {
+            console.log('Fetch Error :-S', err);
+          });
+
+    }
+
+    document.addEventListener("DOMContentLoaded", function(){
+        getRecentOrders();
+    });
+</script>

@@ -4,8 +4,28 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "copy": "shx cp ../python/dist/bonsai_dca_server . && shx cp ../python/dist/bonsai_dca_daemon .",
+    "start": "npm run copy && electron .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pack": "npm run copy && electron-builder --dir",
+    "dist": "npm run copy && electron-builder --publish=never",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "productName": "Bonsai_DCA",
+    "appId": "bonsai.bonsai_dca",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": true
+    },
+    "win": {
+      "icon": "../icons/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    }
   },
   "repository": {
     "type": "git",
@@ -18,7 +38,9 @@
   },
   "homepage": "https://github.com/kdmukai/bonsai_dca#readme",
   "devDependencies": {
-    "electron": "^13.0.1"
+    "electron": "^13.0.1",
+    "electron-builder": "^22.10.5",
+    "shx": "^0.3.3"
   },
   "dependencies": {
     "node-fetch": "^2.6.1"
