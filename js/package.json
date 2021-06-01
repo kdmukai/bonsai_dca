@@ -1,6 +1,6 @@
 {
-  "name": "bonsai-electron",
-  "version": "0.0.1",
+  "name": "Bonsai DCA",
+  "version": "0.0.1b",
   "description": "",
   "main": "main.js",
   "scripts": {
@@ -12,8 +12,9 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
+    "asar": false,
     "productName": "Bonsai_DCA",
-    "appId": "bonsai.bonsai_dca",
+    "appId": "com.bonsai_dca.app",
     "mac": {
       "category": "public.app-category.utilities",
       "hardenedRuntime": true

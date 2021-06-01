@@ -6,6 +6,9 @@ const fetch = require("node-fetch");
 const serverURL = "http://127.0.0.1:61712";
 const bonsaiServerPath = path.join(__dirname, "bonsai_dca_server")
 const bonsaiDaemonPath = path.join(__dirname, "bonsai_dca_daemon")
+
+console.log(bonsaiServerPath);
+
 let bonsaiServerProcess
 let bonsaiDaemonProcess
 let mainWindow
@@ -54,45 +57,74 @@ switch (process.platform) {
 }
 
 
+function loadUrlWhenReady() {
+  fetch(serverURL)
+    .then(
+      function(response) {
+        if (response.status == 200) {
+          console.log("Loading url");
+          mainWindow.loadURL(serverURL);
+          return
+        } else {
+          console.log(response);
+          return loadUrlWhenReady();
+        }
+      }
+    )
+    .catch(function(err) {
+      if (err.code == 'ECONNREFUSED' | err.code == 'EINVAL') {
+        return loadUrlWhenReady();
+      } else {
+        console.log(err);
+      }
+    });
+}
+
+
 app.whenReady().then(() => {
 
-  console.log("Creating the window")
-  createWindow()
+  try {
+    console.log("Creating the window")
+    createWindow()
 
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
+    app.on('activate', function () {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
 
-  // Start the flask server process
-  console.log("Starting the server")
-  bonsaiServerProcess = spawn(bonsaiServerPath, [], { stdio: ['pipe', process.stdout, process.stderr] });
+    // Start the flask server process
+    console.log("Starting the server")
+    bonsaiServerProcess = spawn(bonsaiServerPath, [], { stdio: ['pipe', process.stdout, process.stderr] });
 
-  // LAME KLUDGE: Can't get the commented out section below to detect when Flask is ready
-  //  to serve so instead we just wait 8 seconds. In order to try the stdout detection
-  //  method again, must edit `spawn` call above to swap `process.stdout` with `'pipe'`.
-  setTimeout(() => {
-    console.log("Loading url");
-    mainWindow.loadURL(serverURL);
-  }, 8000);
+    // LAME KLUDGE: Can't get the commented out section below to detect when Flask is ready
+    //  to serve so instead we just wait 8 seconds. In order to try the stdout detection
+    //  method again, must edit `spawn` call above to swap `process.stdout` with `'pipe'`.
+    // setTimeout(() => {
+    //   console.log("Loading url");
+    //   mainWindow.loadURL(serverURL);
+    // }, 10000);
 
+    loadUrlWhenReady();
 
-  // bonsaiServerProcess.stdout.on('data', (data) => {
-  //   // console.log(data.toString());
-  //   // console.log(data.toString().includes("Running on"));
-  //   if(data.toString().includes("Running on")) {
-  //     console.log("Loading url");
-  //     mainWindow.loadURL(serverURL);
-  //   }
-  // });
-  // bonsaiServerProcess.stderr.on('data', (data) => {
-  //   // https://stackoverflow.com/questions/20792427/why-is-my-node-child-process-that-i-created-via-spawn-hanging
-  //   // needed so bonsai won't get stuck
-  //   console.log(data.toString());
-  // });
+    // bonsaiServerProcess.stdout.on('data', (data) => {
+    //   // console.log(data.toString());
+    //   // console.log(data.toString().includes("Running on"));
+    //   if(data.toString().includes("Running on")) {
+    //     console.log("Loading url");
+    //     mainWindow.loadURL(serverURL);
+    //   }
+    // });
+    // bonsaiServerProcess.stderr.on('data', (data) => {
+    //   // https://stackoverflow.com/questions/20792427/why-is-my-node-child-process-that-i-created-via-spawn-hanging
+    //   // needed so bonsai won't get stuck
+    //   console.log(data.toString());
+    // });
 
-  // Start the background daemon thread
-  console.log("Starting the daemon")
-  bonsaiDaemonProcess = spawn(bonsaiDaemonPath, [], { stdio: ['pipe', process.stdout, process.stderr] });
+    // Start the background daemon thread
+    console.log("Starting the daemon")
+    bonsaiDaemonProcess = spawn(bonsaiDaemonPath, [], { stdio: ['pipe', process.stdout, process.stderr] });
+  } catch (e) {
+    console.log(e);
+  }
 })
 
 

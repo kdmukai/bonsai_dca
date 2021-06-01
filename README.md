@@ -1,6 +1,8 @@
-# bonsai_dca
+# Bonsai DCA
 
-_Serenity through tiny stacks_
+_Buy many small stacks<br/>
+Don't try to time the market<br/>
+Pure serenity_
 
 
 ## Local development
@@ -25,6 +27,8 @@ _note: you have to build the app locally first (see below) for this `npm` call t
 ```
 cd python
 pyinstaller bonsai_dca_server.spec
-
 pyinstaller bonsai_dca_daemon.spec
+
+cd ../js
+npm run dist
 ```
