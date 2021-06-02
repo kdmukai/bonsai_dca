@@ -2,8 +2,6 @@
 
 
 {% block body_content %}
-    Hello, world!
-
     {% if credentials %}
         {% for credential in credentials %}
             <div><a href="{{ url_for('credentials.view_credential', credential_id=credential.id) }}">{{ credential.exchange }} (-{{ credential.client_key_last_six }})</a></div>

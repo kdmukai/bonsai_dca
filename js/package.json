@@ -1,6 +1,6 @@
 {
   "name": "Bonsai DCA",
-  "version": "0.0.1b",
+  "version": "0.0.1c",
   "description": "",
   "main": "main.js",
   "scripts": {
@@ -13,7 +13,7 @@
   },
   "build": {
     "asar": false,
-    "productName": "Bonsai_DCA",
+    "productName": "Bonsai DCA",
     "appId": "com.bonsai_dca.app",
     "mac": {
       "category": "public.app-category.utilities",
