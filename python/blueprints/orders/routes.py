@@ -1,5 +1,8 @@
-from flask import Blueprint, jsonify, render_template, request
+from decimal import Decimal
+from flask import (Blueprint, jsonify, render_template, request, redirect,
+    url_for)
 
+from exchanges.gemini import GeminiExchange, GeminiRequestException
 from models import APICredential, DCASchedule, Order
 
 
@@ -11,7 +14,7 @@ orders_routes = Blueprint('orders', __name__, template_folder='_templates')
 @orders_routes.route("/<order_id>")
 def view_order(order_id):
     order = Order.get(id=order_id)
-    return render_template('orders/view_order.html', order=order, credential=order.schedule.credential)
+    return render_template('orders/view_order.html', order=order, credential=order.credential)
 
 
 
@@ -20,7 +23,7 @@ def recent_orders():
     data = []
     for order in Order.select().order_by(Order.created.desc()).limit(10):
         entry = order.to_json()
-        entry["exchange"] = order.schedule.credential.exchange
+        entry["exchange"] = order.credential.exchange
         data.append(entry)
 
     return jsonify(data)
@@ -39,7 +42,7 @@ def manual_order(credential_id):
 
         exchange = GeminiExchange(credential)
         order = exchange.place_order(market_name, order_side, amount, amount_currency)
-        return redirect(url_for('view_order', credential_id=credential.id, order_id=order.id))
+        return redirect(url_for('orders.view_order', order_id=order.id))
 
     return render_template('orders/manual_order.html', credential=credential)
 
